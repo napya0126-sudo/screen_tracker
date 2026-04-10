@@ -21,6 +21,24 @@ def run_command(command: list[str]) -> str:
     return result.stdout.strip()
 
 
+BROWSER_APPS = {"Google Chrome", "Dia"}
+
+
+def get_active_tab_url(front_app: str) -> str:
+    if front_app not in BROWSER_APPS:
+        return ""
+    script = f"""
+tell application "{front_app}"
+    try
+        get URL of active tab of front window
+    on error
+        return ""
+    end try
+end tell
+"""
+    return run_command(["osascript", "-e", script])
+
+
 def get_frontmost_window() -> tuple[str, str]:
     script = """
 tell application "System Events"
@@ -125,11 +143,13 @@ def make_record() -> dict:
     app_name, window_title = get_frontmost_window()
     idle_seconds = get_idle_seconds()
     status = get_status(idle_seconds)
+    active_tab_url = get_active_tab_url(app_name)
     meeting_context = detect_meeting_context(app_name, window_title, status)
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "application_name": app_name,
         "window_title": window_title,
+        "active_tab_url": active_tab_url,
         "status": status,
         "analysis_excluded": app_name == "Python",
         **meeting_context,
